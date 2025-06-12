@@ -5,7 +5,7 @@ import math
 # Inicialização do Pygame
 pygame.init()
 
-# Configurações da tela
+# Configurações da tela Full HD
 LARGURA, ALTURA = 1000, 600
 tela = pygame.display.set_mode((LARGURA, ALTURA))
 pygame.display.set_caption("Movimento Uniforme - Física para Ensino Médio")
@@ -28,21 +28,33 @@ pausado = False
 mostrar_formulas = True
 mostrar_grafico = True
 
-# Objeto em movimento
-carro_img = pygame.Surface((80, 40), pygame.SRCALPHA)
-pygame.draw.rect(carro_img, AZUL, (0, 10, 70, 30), border_radius=8)
-pygame.draw.rect(carro_img, (180, 220, 255), (10, 15, 20, 20))
-pygame.draw.rect(carro_img, (180, 220, 255), (40, 15, 20, 20))
-pygame.draw.rect(carro_img, (200, 230, 255), (60, 15, 10, 10))
+# Objeto em movimento - tamanho relativo
+carro_largura = int(LARGURA * 0.04)  # 4% da largura da tela
+carro_altura = int(ALTURA * 0.04)    # 4% da altura da tela
+carro_img = pygame.Surface((carro_largura, carro_altura), pygame.SRCALPHA)
+pygame.draw.rect(carro_img, AZUL, (0, carro_altura//4, carro_largura*0.875, carro_altura*0.75), border_radius=8)
+pygame.draw.rect(carro_img, (180, 220, 255), (carro_largura*0.125, carro_altura*0.375, carro_largura*0.25, carro_altura*0.5))
+pygame.draw.rect(carro_img, (180, 220, 255), (carro_largura*0.5, carro_altura*0.375, carro_largura*0.25, carro_altura*0.5))
+pygame.draw.rect(carro_img, (200, 230, 255), (carro_largura*0.75, carro_altura*0.375, carro_largura*0.125, carro_altura*0.25))
 
-# Fonte
-fonte = pygame.font.SysFont(None, 32)
-fonte_pequena = pygame.font.SysFont(None, 28)
-fonte_titulo = pygame.font.SysFont(None, 48, bold=True)
+# Fontes com tamanhos relativos
+fonte_tamanho = int(ALTURA * 0.03)  # 3% da altura
+fonte_pequena_tamanho = int(ALTURA * 0.025) # 2.5% da altura
+fonte_titulo_tamanho = int(ALTURA * 0.045) # 4.5% da altura
+
+fonte = pygame.font.SysFont(None, fonte_tamanho)
+fonte_pequena = pygame.font.SysFont(None, fonte_pequena_tamanho)
+fonte_titulo = pygame.font.SysFont(None, fonte_titulo_tamanho, bold=True)
 
 class Botao:
     def __init__(self, x, y, largura, altura, texto, cor=VERDE, cor_texto=BRANCO):
-        self.rect = pygame.Rect(x, y, largura, altura)
+        # As coordenadas e dimensões são dadas em frações da tela
+        self.rect = pygame.Rect(
+            int(LARGURA * x),
+            int(ALTURA * y),
+            int(LARGURA * largura),
+            int(ALTURA * altura)
+        )
         self.texto = texto
         self.cor = cor
         self.cor_texto = cor_texto
@@ -62,11 +74,11 @@ class Botao:
             return True
         return False
 
-# Criar botões
-botao_pausar = Botao(50, 500, 120, 50, "PAUSAR" if not pausado else "CONTINUAR", AMARELO)
-botao_reset = Botao(190, 500, 120, 50, "REINICIAR", VERMELHO)
-botao_formulas = Botao(330, 500, 180, 50, "FÓRMULAS: ON" if mostrar_formulas else "FÓRMULAS: OFF")
-botao_grafico = Botao(530, 500, 180, 50, "GRÁFICO: ON" if mostrar_grafico else "GRÁFICO: OFF")
+# Criar botões com posições e tamanhos relativos
+botao_pausar = Botao(0.04, 0.83, 0.1, 0.05, "PAUSAR" if not pausado else "CONTINUAR", AMARELO)
+botao_reset = Botao(0.15, 0.83, 0.1, 0.05, "REINICIAR", VERMELHO)
+botao_formulas = Botao(0.26, 0.83, 0.12, 0.05, "FÓRMULAS: ON" if mostrar_formulas else "FÓRMULAS: OFF")
+botao_grafico = Botao(0.39, 0.83, 0.12, 0.05, "GRÁFICO: ON" if mostrar_grafico else "GRÁFICO: OFF")
 
 # Lista para armazenar pontos do gráfico
 pontos_posicao = []
@@ -76,7 +88,9 @@ pontos_velocidade = []
 clock = pygame.time.Clock()
 tempo_inicial = pygame.time.get_ticks()
 
-def desenhar_seta(superficie, inicio, fim, cor=BRANCO, largura=2, tamanho_cabeca=10):
+def desenhar_seta(superficie, inicio, fim, cor=BRANCO, largura=2, tamanho_cabeca=None):
+    if tamanho_cabeca is None:
+        tamanho_cabeca = ALTURA * 0.015  # 1.5% da altura
     dx = fim[0] - inicio[0]
     dy = fim[1] - inicio[1]
     angulo = math.atan2(dy, dx)
@@ -134,34 +148,51 @@ while executando:
             elif botao_grafico.verificar_clique(evento.pos):
                 mostrar_grafico = not mostrar_grafico
                 botao_grafico.texto = "GRÁFICO: ON" if mostrar_grafico else "GRÁFICO: OFF"
+
+        if evento.type == pygame.KEYDOWN:
+            if evento.key == pygame.K_SPACE:
+                pausado = not pausado
+                botao_pausar.texto = "CONTINUAR" if pausado else "PAUSAR"
+                botao_pausar.cor = AMARELO
+            elif evento.key == pygame.K_r:
+                tempo = 0
+                pontos_posicao = []
+                pontos_velocidade = []
     
     # Atualizar interface
     tela.fill(FUNDO)
     
     # Desenhar eixo e pista
-    pygame.draw.line(tela, CINZA, (50, 300), (LARGURA - 50, 300), 3)
-    for x in range(50, LARGURA - 40, 30):
-        pygame.draw.line(tela, BRANCO, (x, 290), (x, 310), 2)
+    eixo_y = ALTURA // 2  # Centro da tela
+    pygame.draw.line(tela, CINZA, (int(LARGURA * 0.05), eixo_y), (int(LARGURA * 0.95), eixo_y), 3)
+    for x in range(int(LARGURA * 0.05), int(LARGURA * 0.95), int(LARGURA * 0.03)):
+        pygame.draw.line(tela, BRANCO, (x, eixo_y - 10), (x, eixo_y + 10), 2)
     
     # Desenhar carro
-    carro_rect = carro_img.get_rect(midleft=(posicao_atual, 300))
+    carro_rect = carro_img.get_rect(midleft=(posicao_atual, eixo_y))
     tela.blit(carro_img, carro_rect)
     
     # Desenhar vetor velocidade
     desenhar_seta(tela, 
-                 (posicao_atual + 70, 280), 
-                 (posicao_atual + 70 + velocidade, 280), 
+                 (posicao_atual + carro_largura, eixo_y - 30), 
+                 (posicao_atual + carro_largura + velocidade, eixo_y - 30), 
                  VERDE, 3)
     
     # Desenhar informações
-    pygame.draw.rect(tela, (40, 40, 60), (20, 20, LARGURA - 40, 150), border_radius=10)
-    pygame.draw.rect(tela, AZUL, (20, 20, LARGURA - 40, 150), 2, border_radius=10)
+    pygame.draw.rect(tela, (40, 40, 60), 
+                    (int(LARGURA * 0.02), int(ALTURA * 0.02), 
+                    int(LARGURA * 0.96), int(ALTURA * 0.15)), 
+                    border_radius=10)
+    pygame.draw.rect(tela, AZUL, 
+                    (int(LARGURA * 0.02), int(ALTURA * 0.02), 
+                    int(LARGURA * 0.96), int(ALTURA * 0.15)), 
+                    2, border_radius=10)
     
     titulo = fonte_titulo.render("Movimento Uniforme (MU)", True, AMARELO)
-    tela.blit(titulo, (LARGURA//2 - titulo.get_width()//2, 30))
+    tela.blit(titulo, (LARGURA//2 - titulo.get_width()//2, int(ALTURA * 0.05)))
     
     texto = fonte.render("Características do MU: Velocidade constante, aceleração nula", True, BRANCO)
-    tela.blit(texto, (LARGURA//2 - texto.get_width()//2, 80))
+    tela.blit(texto, (LARGURA//2 - texto.get_width()//2, int(ALTURA * 0.1)))
     
     # Fórmulas
     if mostrar_formulas:
@@ -174,7 +205,7 @@ while executando:
         
         for i, formula in enumerate(formulas):
             texto_formula = fonte_pequena.render(formula, True, VERDE)
-            tela.blit(texto_formula, (LARGURA//2 - 200, 110 + i * 30))
+            tela.blit(texto_formula, (int(LARGURA * 0.10), int(ALTURA * 0.05) + i * int(ALTURA * 0.03)))
     
     # Valores atuais
     info_textos = [
@@ -186,31 +217,40 @@ while executando:
     
     for i, texto_info in enumerate(info_textos):
         texto_surf = fonte.render(texto_info, True, BRANCO)
-        tela.blit(texto_surf, (LARGURA - 350, 200 + i * 40))
+        tela.blit(texto_surf, (int(LARGURA * 0.7), int(ALTURA * 0.02) + i * int(ALTURA * 0.04)))
     
     # Gráficos
     if mostrar_grafico and pontos_posicao:
         # Gráfico Posição x Tempo
-        pygame.draw.rect(tela, (40, 40, 60), (50, 350, 400, 200), border_radius=10)
-        pygame.draw.rect(tela, AZUL, (50, 350, 400, 200), 2, border_radius=10)
+        pygame.draw.rect(tela, (40, 40, 60), 
+                        (int(LARGURA * 0.05), int(ALTURA * 0.6), 
+                        int(LARGURA * 0.4), int(ALTURA * 0.3)), 
+                        border_radius=10)
+        pygame.draw.rect(tela, AZUL, 
+                        (int(LARGURA * 0.05), int(ALTURA * 0.6), 
+                        int(LARGURA * 0.4), int(ALTURA * 0.3)), 
+                        2, border_radius=10)
         
         titulo_grafico = fonte_pequena.render("Gráfico: Posição x Tempo", True, AMARELO)
-        tela.blit(titulo_grafico, (250 - titulo_grafico.get_width()//2, 360))
+        tela.blit(titulo_grafico, (int(LARGURA * 0.25) - titulo_grafico.get_width()//2, int(ALTURA * 0.61)))
         
         # Eixos
-        pygame.draw.line(tela, BRANCO, (100, 500), (420, 500), 2)  # Eixo x
-        pygame.draw.line(tela, BRANCO, (100, 500), (100, 370), 2)   # Eixo y
+        inicio_x = int(LARGURA * 0.1)
+        fim_x = int(LARGURA * 0.4)
+        eixo_y_grafico = int(ALTURA * 0.85)
+        pygame.draw.line(tela, BRANCO, (inicio_x, eixo_y_grafico), (fim_x, eixo_y_grafico), 2)  # Eixo x
+        pygame.draw.line(tela, BRANCO, (inicio_x, eixo_y_grafico), (inicio_x, int(ALTURA * 0.65)), 2)   # Eixo y
         
         # Desenhar setas
-        desenhar_seta(tela, (100, 370), (100, 360), BRANCO, 2)
-        desenhar_seta(tela, (420, 500), (430, 500), BRANCO, 2)
+        desenhar_seta(tela, (inicio_x, int(ALTURA * 0.65)), (inicio_x, int(ALTURA * 0.64)), BRANCO, 2)
+        desenhar_seta(tela, (fim_x, eixo_y_grafico), (fim_x + 10, eixo_y_grafico), BRANCO, 2)
         
         # Legendas
         texto_x = fonte_pequena.render("Tempo (s)", True, BRANCO)
-        tela.blit(texto_x, (420, 510))
+        tela.blit(texto_x, (fim_x, eixo_y_grafico + 10))
         
         texto_y = fonte_pequena.render("Posição (m)", True, BRANCO)
-        tela.blit(texto_y, (70, 350))
+        tela.blit(texto_y, (inicio_x - 50, int(ALTURA * 0.63)))
         
         # Desenhar curva
         if len(pontos_posicao) > 1:
@@ -219,36 +259,47 @@ while executando:
             max_pos = max(1, max(p for _, p in pontos_posicao))
             
             for t, p in pontos_posicao:
-                x = 100 + (t / max_tempo) * 300
-                y = 500 - (p / max_pos) * 120
+                x = inicio_x + (t / max_tempo) * (fim_x - inicio_x)
+                y = eixo_y_grafico - (p / max_pos) * (eixo_y_grafico - int(ALTURA * 0.65))
                 pontos_plot.append((x, y))
             
             pygame.draw.lines(tela, VERDE, False, pontos_plot, 3)
         
         # Gráfico Velocidade x Tempo
-        pygame.draw.rect(tela, (40, 40, 60), (550, 350, 400, 200), border_radius=10)
-        pygame.draw.rect(tela, AZUL, (550, 350, 400, 200), 2, border_radius=10)
+        pygame.draw.rect(tela, (40, 40, 60), 
+                        (int(LARGURA * 0.55), int(ALTURA * 0.6), 
+                        int(LARGURA * 0.4), int(ALTURA * 0.3)), 
+                        border_radius=10)
+        pygame.draw.rect(tela, AZUL, 
+                        (int(LARGURA * 0.55), int(ALTURA * 0.6), 
+                        int(LARGURA * 0.4), int(ALTURA * 0.3)), 
+                        2, border_radius=10)
         
         titulo_grafico = fonte_pequena.render("Gráfico: Velocidade x Tempo", True, AMARELO)
-        tela.blit(titulo_grafico, (750 - titulo_grafico.get_width()//2, 360))
+        tela.blit(titulo_grafico, (int(LARGURA * 0.75) - titulo_grafico.get_width()//2, int(ALTURA * 0.61)))
         
         # Eixos
-        pygame.draw.line(tela, BRANCO, (600, 500), (920, 500), 2)  # Eixo x
-        pygame.draw.line(tela, BRANCO, (600, 500), (600, 370), 2)   # Eixo y
+        inicio_x = int(LARGURA * 0.6)
+        fim_x = int(LARGURA * 0.9)
+        eixo_y_grafico = int(ALTURA * 0.85)
+        pygame.draw.line(tela, BRANCO, (inicio_x, eixo_y_grafico), (fim_x, eixo_y_grafico), 2)  # Eixo x
+        pygame.draw.line(tela, BRANCO, (inicio_x, eixo_y_grafico), (inicio_x, int(ALTURA * 0.65)), 2)   # Eixo y
         
         # Desenhar setas
-        desenhar_seta(tela, (600, 370), (600, 360), BRANCO, 2)
-        desenhar_seta(tela, (920, 500), (930, 500), BRANCO, 2)
+        desenhar_seta(tela, (inicio_x, int(ALTURA * 0.65)), (inicio_x, int(ALTURA * 0.64)), BRANCO, 2)
+        desenhar_seta(tela, (fim_x, eixo_y_grafico), (fim_x + 10, eixo_y_grafico), BRANCO, 2)
         
         # Legendas
         texto_x = fonte_pequena.render("Tempo (s)", True, BRANCO)
-        tela.blit(texto_x, (900, 510))
+        tela.blit(texto_x, (fim_x, eixo_y_grafico + 10))
         
         texto_y = fonte_pequena.render("Velocidade (m/s)", True, BRANCO)
-        tela.blit(texto_y, (570, 350))
+        tela.blit(texto_y, (inicio_x - 60, int(ALTURA * 0.63)))
         
         # Linha de velocidade constante
-        pygame.draw.line(tela, VERMELHO, (600, 440), (920, 440), 3)
+        escala_velocidade = 100
+        y_vel = eixo_y_grafico - (velocidade / escala_velocidade) * (eixo_y_grafico - int(ALTURA * 0.65))
+        pygame.draw.line(tela, VERMELHO, (inicio_x, y_vel), (fim_x, y_vel), 3)
     
     # Desenhar botões
     botao_pausar.desenhar(tela)
